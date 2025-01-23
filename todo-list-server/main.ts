@@ -1,42 +1,33 @@
 import { Context, Hono } from "hono";
+import { Database } from "jsr:@db/sqlite@0.12";
+import { nanoid } from "https://deno.land/x/nanoid/mod.ts";
 
+const db = new Database("test.db");
 const app = new Hono();
 
 interface Todo {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   status: "done" | "todo" | "inprogress";
 }
 
-let todos: Todo[] = [
-  {
-    id: "1",
-    title: "Learn Deno",
-    description: "Learn how to use Deno",
-    status: "done",
-  },
-  {
-    id: "2",
-    title: "Learn TypeScript",
-    description: "Learn how to use TypeScript",
-    status: "done",
-  },
-  {
-    id: "3",
-    title: "Learn Hono",
-    description: "Learn how to use Hono",
-    status: "inprogress",
-  },
-  {
-    id: "4",
-    title: "Learn React",
-    description: "Learn how to use React",
-    status: "todo",
-  },
-];
+db.prepare(
+  `
+	CREATE TABLE IF NOT EXISTS todo (
+	  id TEXT PRIMARY KEY,
+	  title TEXT NOT NULL,
+	  description TEXT,
+    status TEXT CHECK(status in('done', 'todo', 'inprogress')),
+    created_at DATETIME CURRENT_TIMESTAMP 
+	);
+  `
+).run();
+
+const todos: Todo[] = [];
 
 app.get("/todos", (c: Context) => {
+  const todos: Todo[] = db.prepare("SELECT * from todo").all();
   return c.json({ data: todos });
 });
 
@@ -46,102 +37,171 @@ app.get("/todos", (c: Context) => {
 app.get("/todos/completed", (c: Context) => {
   // implement this
   // get all todos that have status "done"
-  const completed = todos.filter((todo) => todo.status === "done");
-  return c.json({ data: completed });
+  try {
+    const todos: Todo[] = db
+      .prepare("SELECT * from todo where status = 'done'")
+      .all();
+    return c.json({ data: todos });
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({ message: "my bad bro" });
+  }
 });
 
 app.get("/todos/inprogress", (c: Context) => {
   // implement this
   // get all todos that have status "inprogress"
-  const inprogress = todos.filter((todo) => todo.status === "inprogress");
-  return c.json({ data: inprogress });
+  try {
+    const todos: Todo[] = db
+      .prepare("SELECT * from todo where status = 'inprogress'")
+      .all();
+    return c.json({ data: todos });
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({ message: "my bad bro" });
+  }
 });
 
 app.patch("/todos/:id/complete", (c: Context) => {
   // change the status of a todo with that ID to "done"
   const id = c.req.param("id");
-  const requested = todos.find((todo) => todo.id === id);
-  if (requested === undefined) {
-    c.status(404);
-    return c.json({ message: "todo with that id does not exist" });
+  try {
+    const todo = db.prepare("SELECT id from todo where id = ?").get(id);
+    if (todo == undefined) {
+      c.status(404);
+      return c.json({ message: "todo with that id does not exist" });
+    }
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({
+      message: "something went wrong trying to delete your todo",
+    });
   }
-  requested.status = "done";
+  try {
+    db.prepare("UPDATE todo SET status = 'done' WHERE id = ?").run(id);
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    c.json({ message: "bomboclat" });
+  }
   return c.json({ message: "status changed to done" });
 });
 
 app.patch("/todos/:id/start", (c: Context) => {
   // change the status of a todo with that ID to "inprogress"
   const id = c.req.param("id");
-  const requested = todos.find((todo) => todo.id === id);
-  if (requested === undefined) {
-    c.status(404);
-    return c.json({ message: "todo with that id does not exist" });
+  try {
+    db.prepare("UPDATE todo SET status = 'inprogress' WHERE id = ?").run(id);
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    c.json({ message: "bomboclat" });
   }
-  requested.status = "inprogress";
   return c.json({ message: "status changed to inprogress" });
 });
 
 app.delete("/todos/:id", (c: Context) => {
   // delete a todo with that ID
-  //best practice: make a copy with filter -> update the array
+  // best practice: make a copy with filter -> update the array
   const id = c.req.param("id");
-  const requested = todos.find((todo) => todo.id === id);
-  if (requested === undefined) {
-    c.status(404);
-    return c.json({ message: "todo with that id does not exist" });
-  }
-  todos = todos.filter((todo) => todo.id !== id);
-  return c.json({ message: "task deleted successfully" });
-}); //it returns 404 not found but it works
 
-//also error 500
+  try {
+    const todo = db.prepare("SELECT id from todo where id = ?").get(id);
+    if (todo == undefined) {
+      c.status(404);
+      return c.json({ message: "todo with that id does not exist" });
+    }
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({
+      message: "something went wrong trying to delete your todo",
+    });
+  }
+
+  try {
+    db.prepare("DELETE from todo WHERE id = ?").run(id);
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({
+      message: "something went wrong trying to delete your todo",
+    });
+  }
+  return c.json({ message: "task deleted successfully" });
+});
+
 app.put("/todos/:id", async (c: Context) => {
   // update a todo with that ID
   // the request body should contain the new title and description
   const id = c.req.param("id");
-  const requested = todos.find((todo) => todo.id === id);
-  if (requested === undefined) {
-    c.status(404);
-    return c.json({ message: "todo with that id does not exist" });
+  try {
+    console.log("SELECT statment run");
+    const todo = db.prepare("SELECT id from todo where id = ?").get(id);
+    if (todo == undefined) {
+      console.log("not found");
+      c.status(404);
+      return c.json({ message: "todo with that id does not exist" });
+    }
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({
+      message: "something went wrong trying to update your todo",
+    });
   }
-  const body = await c.req.json();
-  if (body == undefined) {
-    c.status(400);
-    return c.json({ message: "please fill the body" });
+
+  try {
+    const body = await c.req.json();
+    const title = body.title as string;
+    const description = body.description as string;
+    db.prepare("UPDATE todo SET title = ?, description = ? WHERE id = ?").all(
+      title,
+      description,
+      id
+    );
+    return c.json({ message: "updated successfully" });
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    c.json({ message: "something went wrong" });
   }
-  const title = body.title as string;
-  const description = body.description as string;
-  requested.title = title;
-  requested.description = description;
-  return c.json({ message: "task information updated" });
 });
 
 app.get("/todos/:id", (c: Context) => {
   const id = c.req.param("id");
-  const requested = todos.find((todo) => todo.id === id);
-  if (requested === undefined) {
-    c.status(404);
-    return c.json({ message: "todo with that id does not exist" });
+  try {
+    const todo = db.prepare("SELECT * FROM todo WHERE id = ?").get(id); //use 'get' to get either value or undefine; can be used for error checking
+    if (todo === undefined) {
+      c.status(404);
+      return c.json({ message: "todo with that id does not exist" });
+    }
+    return c.json({ data: todo });
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({ message: "something went wrong" });
   }
-  return c.json({ data: requested });
 });
 
 //doesn't work for some reason error 500
 app.post("/todos", async (c: Context) => {
-  const body = await c.req.json();
-  const id = body.id as string;
-  const title = body.title as string;
-  const description = body.description as string;
-  const status = "todo";
-
-  if (todos.some((todo) => todo.id === id)) {
-    c.status(400);
-    return c.json({ message: "id already exists" });
+  try {
+    const body = await c.req.json();
+    const title = body.title as string;
+    const description = body.description as string;
+    db.prepare(
+      "INSERT INTO todo(id,title,description,status,created_at) VALUES(?,?,?,?,?)"
+    ).run(nanoid(10), title, description, "todo", new Date().toISOString());
+    return c.json({ message: "updated successfully" });
+  } catch (err) {
+    c.status(500);
+    console.error(err);
+    return c.json({ message: "something went wrong" });
   }
-
-  todos.push({ id, title, description, status }); // this usually pushes to a DB (mysql, postgresql, mongo, etc)
-  c.status(201); // 201 means "created"
-  return c.json({ message: "created" });
 });
 
 app.get("/l/googz", (c: Context) => {
