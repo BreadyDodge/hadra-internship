@@ -7,5 +7,10 @@
     "@hono/hono@4.6.17": {
       "integrity": "932fcc61d043b14a8b2cb65242716eb32da44e91f2ee117fd7390508669fea31"
     }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@hono/hono@^4.6.17"
+    ]
   }
 }
