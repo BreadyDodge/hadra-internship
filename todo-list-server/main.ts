@@ -1,9 +1,11 @@
 import { Context, Hono } from "hono";
+import { cors } from "hono/cors";
 import { Database } from "jsr:@db/sqlite@0.12";
 import { nanoid } from "https://deno.land/x/nanoid/mod.ts";
 
 const db = new Database("test.db");
 const app = new Hono();
+app.use(cors());
 
 interface Todo {
   id: string;
@@ -21,10 +23,12 @@ db.prepare(
     status TEXT CHECK(status in('done', 'todo', 'inprogress')),
     created_at DATETIME CURRENT_TIMESTAMP 
 	);
-  `
+  `,
 ).run();
 
-const todos: Todo[] = [];
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 app.get("/todos", (c: Context) => {
   const todos: Todo[] = db.prepare("SELECT * from todo").all();
@@ -161,7 +165,7 @@ app.put("/todos/:id", async (c: Context) => {
     db.prepare("UPDATE todo SET title = ?, description = ? WHERE id = ?").all(
       title,
       description,
-      id
+      id,
     );
     return c.json({ message: "updated successfully" });
   } catch (err) {
@@ -193,8 +197,9 @@ app.post("/todos", async (c: Context) => {
     const body = await c.req.json();
     const title = body.title as string;
     const description = body.description as string;
+    await sleep(1000);
     db.prepare(
-      "INSERT INTO todo(id,title,description,status,created_at) VALUES(?,?,?,?,?)"
+      "INSERT INTO todo(id,title,description,status,created_at) VALUES(?,?,?,?,?)",
     ).run(nanoid(10), title, description, "todo", new Date().toISOString());
     return c.json({ message: "updated successfully" });
   } catch (err) {
