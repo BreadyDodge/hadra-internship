@@ -111,113 +111,104 @@ function App() {
   }, []);
 
   return (
-    <div className="bg-neutral-600 h-screen flex flex-col justify-center items-center gap-2">
-      <div>{isLoading && "loading..."}</div>
-      <div className="text-rose-500">{errorMessage}</div>
-      <div className="text-emerald-500">{successMessage}</div>
-      <input
-        value={title}
-        className="bg-white p-3 rounded-xl"
-        placeholder="Title"
-        onChange={(e) => {
-          setTitle(e.target.value);
-        }}
-        disabled={isLoading}
-      />
-      <input
-        value={description}
-        className="bg-white p-3 rounded-xl"
-        placeholder="Description"
-        onChange={(e) => {
-          setDescription(e.target.value);
-        }}
-        disabled={isLoading}
-      />
-      <button
-        className="bg-neutral-500 px-5 py-3 rounded-full hover:bg-red-600 cursor-pointer active:bg-red-950"
-        onClick={async () => {
-          await createTodo({ title, description });
-        }}
-        disabled={isLoading}
-      >
-        Submit
-      </button>
-      <div className="flex flex-col gap-2">
-        {todos.map((todo) => (
-          <div className="bg-amber-100 p-4" key={todo.id}>
-            <div className="flex flex-col">
-              {isEditing === todo.id ? (
-                <input
-                  value={titleEdit}
-                  className="bg-white"
-                  placeholder="New Title"
-                  onChange={(e) => {
-                    setTitleEdit(e.target.value);
-                  }}
-                />
-              ) : (
-                <div>{todo.title}</div>
-              )}
-              {isEditing === todo.id ? (
-                <textarea
-                  className="bg-white p-1"
-                  placeholder="Description"
-                  value={descriptionEdit}
-                  onChange={(e) => {
-                    setDescriptionEdit(e.target.value);
-                  }}
-                />
-              ) : (
-                <div>{todo.description}</div>
-              )}
-            </div>
-            <div>Status:{todo.status}</div>
-            <div className="flex gap-1.5">
-              <button
-                className="bg-red-600 px-1.5 py-1 hover: cursor-pointer"
-                onClick={async () => {
-                  await deleteTodo(todo.id);
-                }}
-              >
-                {isDeleteLoading && deleteId === todo.id
-                  ? "loading..."
-                  : "Delete"}
-              </button>
-              <button
-                className="bg-green-400 px-1.5 py-1 hover: cursor-pointer"
-                onClick={async () => {
-                  await changeStatus("done", todo.id);
-                }}
-              >
-                Done
-              </button>
-              {isEditing === todo.id ? (
-                <button
-                  className="bg-orange-400 px-1.5 py-1 cursor-crosshair"
-                  onClick={async () => {
-                    editTodo(
-                      { title: titleEdit, description: descriptionEdit },
-                      todo.id,
-                    );
-                  }}
-                >
-                  Save
-                </button>
-              ) : (
-                <button
-                  className="bg-orange-400 px-1.5 py-1 cursor-crosshair"
-                  onClick={async () => {
-                    await setIsEditing(todo.id);
-                    setTitleEdit(todo.title);
-                    setDescriptionEdit(todo.description ?? "");
-                  }}
-                >
-                  Edit
-                </button>
-              )}
+    <div className="flex h-screen">
+      <div className="w-40 h-full">
+        <nav className="flex flex-col gap-5 pt-5 pl-2">
+          <div className="flex flex-col pl-5 gap-2">
+            <h2>Fabian</h2>
+            <ul>
+              <li className="hover:bg-amber-50 cursor-pointer hover: text-red-600">
+                <a>Add task</a>
+              </li>
+              <input
+                className="hover:bg-amber-50 cursor-pointer"
+                placeholder="Search"
+              />
+              <li className="hover:bg-amber-50 cursor-pointer">
+                <a href="something">Inbox</a>
+              </li>
+              <li className="hover:bg-amber-50 cursor-pointer">
+                <a>Today</a>
+              </li>
+              <li className="hover:bg-amber-50 cursor-pointer">
+                <a>Upcoming</a>
+              </li>
+              <li className="hover:bg-amber-50 cursor-pointer">
+                <a>Filters and labels</a>
+              </li>
+            </ul>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h2 className="text-gray-400">Favorites</h2>
+            <div className="flex flex-col pl-5 gap-1.5">
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Life
+              </a>
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Lab
+              </a>
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Coding
+              </a>
             </div>
           </div>
-        ))}
+          <div className="flex flex-col">
+            <h2 className="text-gray-400">Projects</h2>
+            <div className="flex flex-col pl-5">
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Life
+              </a>
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Lab
+              </a>
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Coding
+              </a>
+              <a className="text-neutral-500 hover:bg-amber-50 cursor-pointer">
+                # Life
+              </a>
+            </div>
+          </div>
+        </nav>
+      </div>
+      <div className=" w-full flex flex-col">
+        <div className="flex">
+          <h2 className="text-gray-400"> My Project </h2>
+          <button className="px-1.5 ml-auto text-gray-400 hover:text-black cursor-pointer ">
+            Share
+          </button>
+          <button className="px-1.5 text-gray-400 hover:text-black cursor-pointer ">
+            View
+          </button>
+        </div>
+        <h1 className="text-2xl py-5 pl-2 font-bold">Project Name</h1>
+        <div className="flex gap-10">
+          <div className="flex flex-col w-50 gap-2">
+            <h2 className="font-bold ">Section Name</h2>
+            <div className="flex flex-col gap-2">
+              <a className="border-red-100 border-1 rounded py-2 pl-3 hover:border-red-400">
+                Tasks
+              </a>
+              <a className="border-red-100 border-1 rounded py-2 pl-3 hover:border-red-400">
+                Tasks again
+              </a>
+              <a className="border-red-100 border-1 rounded py-2 pl-3 hover:border-red-400">
+                another one
+              </a>
+              <button className="pl-3 hover:text-red-500 flex gap-4 group">
+                <h3 className="text-red-500 w-7 h-7 text-lg group-hover:text-white group-hover:bg-red-400 group-hover:rounded-full">
+                  +
+                </h3>
+                Add task
+              </button>
+            </div>
+          </div>
+          <div>
+            <button className="text-gray-400 hover:text-red-400">
+              Add section
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
