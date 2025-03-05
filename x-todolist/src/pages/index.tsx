@@ -1,24 +1,19 @@
-import {
-  Check,
-  Pencil,
-  Save,
-  Square,
-  SquareCheck,
-  SquareCheckBig,
-  Trash,
-  Trash2,
-  X,
-} from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import EditDelete from "~/components/edit-delete";
+import EditDeleteButton from "~/components/edit-delete";
+import ConfirmCancelButton from "~/components/confirm-cancel";
+import CompleteCancelButton from "~/components/complete-button";
+import { useTasks } from "~/hooks/useTasks";
+import { useDeleteTasks } from "~/hooks/useDeleteTask";
+import { useEditTasks } from "~/hooks/useEditTask";
 
-interface Task {
-  id: string;
-  title: string;
-  done: 0 | 1;
-}
+// interface Task {
+//   id: string;
+//   title: string;
+//   done: 0 | 1;
+// }
 
 export default function Todolist() {
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState("");
   const [deleteId, setDeleteId] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -39,88 +34,14 @@ export default function Todolist() {
     }, 2000);
   };
 
-  const loadTasks = async () => {
-    const res = await fetch(`/api/tasks/`, {
-      method: "GET",
-    });
-    const json = await res.json();
-    setTasks(json.data);
-  };
-
-  const addTasks = async (title: string) => {
-    if (!title) {
-      showMessage("Your task needs a title", "n");
-      return;
-    }
-    try {
-      await fetch(`/api/tasks/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-        }),
-      });
-    } catch (err) {
-      console.error(err);
-    }
+  const { tasks, isLoading, isError, error, mutateAsync } = useTasks(() => {
     setTitle("");
-    await loadTasks();
-  };
-
-  const deleteTask = async (id: string) => {
-    setDeleteId(id);
-    try {
-      await fetch(`/api/tasks/${id}`, {
-        method: "DELETE",
-      });
-    } catch (err) {
-      console.error(err);
-    }
-    setDeleteId("");
-    await loadTasks();
-  };
-
-  const completeTask = async (id: string, done: 0 | 1) => {
-    if (done == 0) {
-      try {
-        await fetch(`/api/tasks/${id}/complete`, {
-          method: "PATCH",
-        });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    if (done == 1) {
-      try {
-        await fetch(`/api/tasks/${id}/cancel`, {
-          method: "PATCH",
-        });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    await loadTasks();
-  };
-
-  const editTask = async (id: string, title: string) => {
-    try {
-      await fetch(`/api/tasks/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-        }),
-      });
-    } catch (err) {
-      console.error(err);
-    }
+  });
+  const { mutateAsync: deleteTask } = useDeleteTasks(() => setDeleteId(""));
+  const { mutateAsync: editTask } = useEditTasks(() => {
     setEditId("");
-    await loadTasks();
-  };
-
-  useEffect(() => {
-    loadTasks();
-  }, []);
+    setEditTitle("");
+  });
 
   return (
     <div className="flex h-screen w-full">
@@ -135,11 +56,15 @@ export default function Todolist() {
         <button
           className="rounded bg-black py-2 text-white"
           onClick={async () => {
-            await addTasks(title);
+            await mutateAsync(title);
           }}
         >
           Add Task
         </button>
+        {isLoading && <p>Loading...</p>}
+        {isError && (
+          <p className="text-red-600">Something went wrong. {error.message}</p>
+        )}
         {errorMessage != "" ? (
           <p className="text-rose-600">{errorMessage}</p>
         ) : successMessage != "" ? (
@@ -147,43 +72,23 @@ export default function Todolist() {
         ) : (
           <p className="text-2xl font-bold">Today</p>
         )}
-        {tasks.map((task) =>
+        {tasks?.map((task) =>
           task.done == 1 ? (
             <div
               className="flex items-center gap-1 rounded-md border-2 border-gray-500 px-2 py-1"
               key={task.id}
             >
-              <button
-                className="rounded-md border-2 border-black bg-black p-0.5 text-white"
-                onClick={async () => {
-                  await completeTask(task.id, task.done);
-                }}
-              >
-                <Check className="h-3 w-3 font-bold" />
-              </button>
+              <CompleteCancelButton id={task.id} done={task.done} />
               <p className="line-through">{task.title}</p>
-              <div className="ml-auto flex gap-2" key={task.id}>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={() => {
-                    showMessage("Cannot edit completed task", "n");
-                  }}
-                >
-                  <Pencil className="h-5 w-5" />
-                </button>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={async () => {
-                    await deleteTask(task.id),
-                      showMessage(
-                        `Sucessfully deleted task "${task.title}"`,
-                        "p",
-                      );
-                  }}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </div>
+              <EditDeleteButton
+                editOnClick={() =>
+                  showMessage("Cannot edit completed task", "n")
+                }
+                deleteOnClick={async () => {
+                  await deleteTask(task.id);
+                  showMessage(`Sucessfully deleted task "${task.title}"`, "p");
+                }}
+              />
             </div>
           ) : editId == task.id ? (
             <div
@@ -202,91 +107,50 @@ export default function Todolist() {
                 placeholder={task.title}
                 onChange={(e) => setEditTitle(e.target.value)}
               />
-              <div className="ml-auto flex gap-2" key={task.id}>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={async () => {
-                    await editTask(task.id, editTitle),
-                      showMessage("Task edited successfully", "p");
-                  }}
-                >
-                  <Check className="h-5 w-5" />
-                </button>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={() => {
-                    setEditId("");
-                  }}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <ConfirmCancelButton
+                confirmOnClick={async () => {
+                  await editTask({
+                    id: task.id,
+                    title: editTitle,
+                  });
+                  showMessage("Task edited successfully", "p");
+                }}
+                cancelOnClick={() => setEditId("")}
+              />
             </div>
           ) : deleteId == task.id ? (
             <div
               className="flex items-center gap-1 rounded-md border-2 border-gray-500 px-2 py-1"
               key={task.id}
             >
-              <button
-                className="h-5 w-5 rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                onClick={async () => {
-                  await completeTask(task.id, task.done);
-                }}
-              ></button>
+              <CompleteCancelButton id={task.id} done={task.done} />
               <p className="font-bold">Delete {task.title} ?</p>
-              <div className="ml-auto flex gap-2" key={task.id}>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={async () => {
-                    await deleteTask(task.id),
-                      showMessage(
-                        `Sucessfully deleted task "${task.title}"`,
-                        "p",
-                      );
-                  }}
-                >
-                  <Check className="h-5 w-5" />
-                </button>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={() => {
-                    setDeleteId("");
-                  }}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <ConfirmCancelButton
+                confirmOnClick={async () => {
+                  await deleteTask(task.id);
+                  showMessage(`Sucessfully deleted task "${task.title}"`, "p");
+                }}
+                cancelOnClick={() => {
+                  setDeleteId("");
+                }}
+              />
             </div>
           ) : (
             <div
               className="flex items-center gap-1 rounded-md border-2 border-gray-500 px-2 py-1"
               key={task.id}
             >
-              <button
-                className="h-5 w-5 rounded-md border-2 border-black p-0.5"
-                onClick={async () => {
-                  await completeTask(task.id, task.done);
-                }}
-              ></button>
+              <CompleteCancelButton id={task.id} done={task.done} />
               <p>{task.title}</p>
-              <div className="ml-auto flex gap-2" key={task.id}>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={() => {
-                    setEditId(task.id), setEditTitle(task.title);
-                  }}
-                >
-                  <Pencil className="h-5 w-5" />
-                </button>
-                <button
-                  className="rounded-md border-2 border-black p-0.5 hover:bg-black hover:text-white"
-                  onClick={() => {
-                    setDeleteId(task.id);
-                  }}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </div>
+              <EditDelete
+                editOnClick={() => {
+                  setEditId(task.id);
+                  setEditTitle(task.title);
+                }}
+                deleteOnClick={() => {
+                  setDeleteId(task.id);
+                }}
+              />
             </div>
           ),
         )}

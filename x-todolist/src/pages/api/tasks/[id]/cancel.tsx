@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "~/server/db";
 import { taskTable } from "~/server/db/schema";
 
@@ -23,7 +23,7 @@ export default async function handler(
     } catch (err) {
       console.error(err);
       return res.status(500).json({
-        message: `Failed to complete task with id: ${id}. Err: ${err}`,
+        message: `Failed to complete task with id: ${id}. Err: ${String(err)}`,
       });
     }
   }
