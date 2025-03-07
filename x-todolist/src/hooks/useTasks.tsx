@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import ky from "ky";
 
 interface Task {
@@ -10,8 +10,7 @@ interface GetTaskResponse {
   data: Task[];
 }
 
-export function useTasks(onSuccess: () => void) {
-  const queryClient = useQueryClient();
+export function useTasks() {
   const tasksQuery = useQuery({
     queryKey: ["tasks"],
     queryFn: async () => {
@@ -20,18 +19,6 @@ export function useTasks(onSuccess: () => void) {
     },
   });
   const tasks = tasksQuery.data;
-  const addTasksMutation = useMutation({
-    mutationFn: async (title: string) => {
-      await ky.post("/api/tasks", {
-        json: { title },
-      });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      onSuccess();
-    },
-    onError: (err) => console.error(err),
-  });
 
-  return { ...tasksQuery, ...addTasksMutation, tasks };
+  return { ...tasksQuery, tasks };
 }
