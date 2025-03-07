@@ -7,6 +7,7 @@ const TaskInput = () => {
   const {
     isError,
     isSuccess,
+    isPending,
     error,
     reset,
     mutateAsync: AddTask,
@@ -26,7 +27,7 @@ const TaskInput = () => {
         onChange={(e) => setTitle(e.target.value)}
       />
       <button
-        className="rounded bg-black py-2 text-white"
+        className="rounded bg-black py-2 text-white disabled:bg-neutral-600"
         onClick={async () => {
           if (title === "") {
             setErrorMessage("Task cannot be empty");
@@ -37,8 +38,9 @@ const TaskInput = () => {
             await AddTask(title);
           }
         }}
+        disabled={isPending}
       >
-        Add Task
+        {isPending ? "Adding task..." : "Add Task"}
       </button>
       {isError && (
         <p className="text-red-600">
